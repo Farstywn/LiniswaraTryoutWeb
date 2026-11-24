@@ -1,0 +1,132 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-color: #ffffff;
+    color: #111827;
+    font-family: "Poppins", "Plus Jakarta Sans", "Segoe UI", system-ui, sans-serif;
+  }
+}
+
+.btn-liniswara {
+  @apply inline-flex items-center justify-center gap-2 rounded-[10px] border-2 border-[#0053FF] bg-[#0053FF] px-5 py-2.5 text-sm font-medium text-white transition-all duration-300;
+}
+
+.btn-liniswara:hover {
+  background-color: #fffd00;
+  color: #0053ff;
+  border-color: #fffd00;
+  transform: translateY(-2px);
+}
+
+.btn-liniswara-outline {
+  @apply inline-flex items-center justify-center gap-2 rounded-[10px] border-2 border-white/80 bg-white px-6 py-3 text-sm font-semibold text-[#0053FF] transition-all duration-300;
+}
+
+.btn-liniswara-outline:hover {
+  background-color: #fffd00;
+  border-color: #fffd00;
+  color: #0053ff;
+  transform: translateY(-2px);
+}
+
+.card-hover {
+  transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+}
+
+.card-hover:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 16px 32px -12px rgba(0, 83, 255, 0.22);
+}
+
+@keyframes floatSlow {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-10px) rotate(1.5deg);
+  }
+}
+
+@keyframes floatReverse {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(8px);
+  }
+}
+
+@keyframes pulseGlow {
+  0%, 100% {
+    opacity: 0.45;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.75;
+    transform: scale(1.06);
+  }
+}
+
+@keyframes mgmpMarquee {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-float-slow {
+  animation: floatSlow 5.5s ease-in-out infinite;
+}
+
+.animate-float-reverse {
+  animation: floatReverse 6.5s ease-in-out infinite;
+}
+
+.animate-pulse-glow {
+  animation: pulseGlow 4.5s ease-in-out infinite;
+}
+
+.mgmp-ticker {
+  overflow: hidden;
+  width: 100%;
+  mask-image: linear-gradient(to right, transparent, black 8%, black 92%, transparent);
+}
+
+.mgmp-track {
+  display: flex;
+  width: max-content;
+  animation: mgmpMarquee 36s linear infinite;
+  will-change: transform;
+}
+
+.mgmp-track:hover {
+  animation-play-state: paused;
+}
+
+.reveal-base {
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity 0.65s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.65s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.reveal-zoom-base {
+  opacity: 0;
+  transform: scale(0.94) translateY(14px);
+  transition: opacity 0.6s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.reveal-visible {
+  opacity: 1 !important;
+  transform: translateY(0) scale(1) !important;
+}
