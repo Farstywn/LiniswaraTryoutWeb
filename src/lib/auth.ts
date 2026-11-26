@@ -20,11 +20,63 @@ export function verifyPassword(password: string, storedHash: string): boolean {
   const parts = storedHash.split(":");
   if (parts.length !== 2) return false;
   const [salt, originalHash] = parts;
+  if (!salt || !originalHash) return false;
   const derived = crypto.scryptSync(password, salt, 64).toString("hex");
-  return crypto.timingSafeEqual(
-    Buffer.from(originalHash, "hex"),
-    Buffer.from(derived, "hex")
-  );
+  const origBuf = Buffer.from(originalHash, "hex");
+  const derivedBuf = Buffer.from(derived, "hex");
+  if (origBuf.length === 0 || origBuf.length !== derivedBuf.length) {
+    return false;
+  }
+  return crypto.timingSafeEqual(origBuf, derivedBuf);
+}
+
+export function getSessionCookieOptions(maxAge = 7 * 24 * 60 * 60) {
+  return {
+    httpOnly: true,
+    sameSite: "lax" as const,
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    maxAge,
+  };
+}
+
+const rateLimitStore = new Map<string, { count: number; resetAt: number }>();
+
+export function getClientIp(request: Request): string {
+  const forwarded = request.headers.get("x-forwarded-for");
+  if (forwarded) {
+    return forwarded.split(",")[0].trim() || "unknown";
+  }
+  return request.headers.get("x-real-ip")?.trim() || "unknown";
+}
+
+export function checkRateLimit(
+  key: string,
+  maxAttempts: number,
+  windowMs: number
+): { allowed: boolean; retryAfterSeconds: number } {
+  const now = Date.now();
+  if (rateLimitStore.size > 500) {
+    rateLimitStore.forEach((entry, k) => {
+      if (entry.resetAt <= now) rateLimitStore.delete(k);
+    });
+  }
+
+  const existing = rateLimitStore.get(key);
+  if (!existing || existing.resetAt <= now) {
+    rateLimitStore.set(key, { count: 1, resetAt: now + windowMs });
+    return { allowed: true, retryAfterSeconds: 0 };
+  }
+
+  if (existing.count >= maxAttempts) {
+    return {
+      allowed: false,
+      retryAfterSeconds: Math.max(1, Math.ceil((existing.resetAt - now) / 1000)),
+    };
+  }
+
+  existing.count += 1;
+  return { allowed: true, retryAfterSeconds: 0 };
 }
 
 export interface SessionPayload {
