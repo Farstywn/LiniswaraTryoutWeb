@@ -10,6 +10,13 @@ import {
 
 export const dynamic = "force-dynamic";
 
+function sanitizePackageDescription(description: string): string {
+  return description
+    .replace(/\s*\(Kode\s+[^)]+\)/gi, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
 export async function GET() {
   const session = getSessionFromCookies();
   if (!session) {
@@ -37,6 +44,7 @@ export async function GET() {
   return NextResponse.json({
     packages: packages.map((pkg) => ({
       ...pkg,
+      description: sanitizePackageDescription(pkg.description),
       locked:
         pkg.is_premium &&
         !checkContentUnlockedWithState(

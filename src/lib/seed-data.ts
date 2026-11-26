@@ -686,7 +686,7 @@ export function buildSeedData(): {
       level: "SD/MI",
       subject: "Kelas 1 (Fase A) • Bahasa Indonesia & Penjumlahan Pengurangan",
       description:
-        "Khusus siswa SD/MI Kelas 1 (Kode BUKU-SD-KELAS1 atau LINISWARA-SD2026). 10 soal cerita bergambar ramah anak usia kelas 1.",
+        "Khusus pembeli buku cetak SD/MI Kelas 1. 10 soal cerita bergambar ramah anak usia kelas 1.",
       duration_minutes: 25,
       question_count: 10,
       is_premium: true,
@@ -698,7 +698,7 @@ export function buildSeedData(): {
       level: "SD/MI",
       subject: "Kelas 2 (Fase A) • Matematika Berhitung & Literasi Lingkungan",
       description:
-        "Khusus siswa SD/MI Kelas 2 (Kode BUKU-SD-KELAS2 atau LINISWARA-SD2026). Melatih perkalian sederhana dan transaksi uang koperasi sekolah.",
+        "Khusus pembeli buku cetak SD/MI Kelas 2. Melatih perkalian sederhana dan transaksi uang koperasi sekolah.",
       duration_minutes: 25,
       question_count: 10,
       is_premium: true,
@@ -710,7 +710,7 @@ export function buildSeedData(): {
       level: "SD/MI",
       subject: "Kelas 3 (Fase B) • IPAS, Meter-Sentimeter & Pecahan Dasar",
       description:
-        "Khusus siswa SD/MI Kelas 3 (Kode BUKU-SD-KELAS3 atau LINISWARA-SD2026). Memuat soal satuan panjang meter/cm, pecahan kue, dan metamorfosis.",
+        "Khusus pembeli buku cetak SD/MI Kelas 3. Memuat soal satuan panjang meter/cm, pecahan kue, dan metamorfosis.",
       duration_minutes: 25,
       question_count: 10,
       is_premium: true,
@@ -722,7 +722,7 @@ export function buildSeedData(): {
       level: "SD/MI",
       subject: "Kelas 4 (Fase B) • Matematika Geometri & IPAS Tumbuhan",
       description:
-        "Khusus siswa SD/MI Kelas 4 (Kode BUKU-SD-KELAS4 atau LINISWARA-SD2026). Soal luas/keliling persegi panjang serta fungsi akar & daun fotosintesis.",
+        "Khusus pembeli buku cetak SD/MI Kelas 4. Soal luas/keliling persegi panjang serta fungsi akar & daun fotosintesis.",
       duration_minutes: 30,
       question_count: 10,
       is_premium: true,
@@ -734,7 +734,7 @@ export function buildSeedData(): {
       level: "SD/MI",
       subject: "Kelas 5 (Fase C) • Matematika Volume/Persen & Ekosistem IPAS",
       description:
-        "Khusus siswa SD/MI Kelas 5 (Kode BUKU-SD-KELAS5 atau LINISWARA-SD2026). Melatih hitung liter akuarium, diskon 20%, dan rantai makanan sawah.",
+        "Khusus pembeli buku cetak SD/MI Kelas 5. Melatih hitung liter akuarium, diskon 20%, dan rantai makanan sawah.",
       duration_minutes: 30,
       question_count: 10,
       is_premium: true,
@@ -746,7 +746,7 @@ export function buildSeedData(): {
       level: "SD/MI",
       subject: "Kelas 6 (Fase C) • AKM Numerasi, Kecepatan & IPA Tata Surya",
       description:
-        "Khusus siswa SD/MI Kelas 6 (Kode BUKU-SD-KELAS6 atau LINISWARA-SD2026). Fokus soal jarak-waktu, rata-rata data nilai, dan tata surya.",
+        "Khusus pembeli buku cetak SD/MI Kelas 6. Fokus soal jarak-waktu, rata-rata data nilai, dan tata surya.",
       duration_minutes: 30,
       question_count: 10,
       is_premium: true,
@@ -760,7 +760,7 @@ export function buildSeedData(): {
       level: "SMP/MTs",
       subject: "Kelas 7 (Fase D) • Matematika Aljabar, Bunga Tabungan & IPA Kalor",
       description:
-        "Khusus SMP/MTs Kelas 7 (Kode BUKU-SMP-KELAS7 atau LINISWARA-SMP2026). Soal persamaan linear, diagram Venn, suhu kalor, dan teks deskripsi.",
+        "Khusus pembeli buku cetak SMP/MTs Kelas 7. Soal persamaan linear, diagram Venn, suhu kalor, dan teks deskripsi.",
       duration_minutes: 30,
       question_count: 10,
       is_premium: true,
@@ -772,7 +772,7 @@ export function buildSeedData(): {
       level: "SMP/MTs",
       subject: "Kelas 8 (Fase D) • Pythagoras, Sistem Pencernaan & Bahasa 5W+1H",
       description:
-        "Khusus SMP/MTs Kelas 8 (Kode BUKU-SMP-KELAS8 atau LINISWARA-SMP2026). Menguji teorema Pythagoras, enzim pencernaan, dan berita 5W+1H.",
+        "Khusus pembeli buku cetak SMP/MTs Kelas 8. Menguji teorema Pythagoras, enzim pencernaan, dan berita 5W+1H.",
       duration_minutes: 30,
       question_count: 10,
       is_premium: true,
@@ -784,7 +784,7 @@ export function buildSeedData(): {
       level: "SMP/MTs",
       subject: "Kelas 9 (Persiapan TKA) • Peluang, Ekspor-Impor & Koding AI",
       description:
-        "Khusus SMP/MTs Kelas 9 (Kode BUKU-SMP-KELAS9 atau LINISWARA-SMP2026). Simulasi TKA menghadapi ujian akhir SMP, logika AI, dan peluang.",
+        "Khusus pembeli buku cetak SMP/MTs Kelas 9. Simulasi TKA menghadapi ujian akhir SMP, logika AI, dan peluang.",
       duration_minutes: 35,
       question_count: 10,
       is_premium: true,
@@ -798,7 +798,7 @@ export function buildSeedData(): {
       level: "SMA/MA",
       subject: "Kelas 10 • Peminatan MIPA (Matematika, Fisika Newton & Kimia Dasar)",
       description:
-        "Paket SMA/MA Kelas 10 jalur Saintek/MIPA (Kode BUKU-SMA-MIPA atau LINISWARA-TKA2025). 10 soal analitik × 3 pernyataan B/S.",
+        "Paket SMA/MA Kelas 10 jalur Saintek/MIPA untuk pembeli buku cetak Liniswara. 10 soal analitik × 3 pernyataan B/S.",
       duration_minutes: 35,
       question_count: 10,
       is_premium: true,
@@ -810,7 +810,7 @@ export function buildSeedData(): {
       level: "SMA/MA",
       subject: "Kelas 10 • Peminatan IPS & Bahasa (Ekonomi Mikro, Geografi & Sosiologi)",
       description:
-        "Paket SMA/MA Kelas 10 jalur Soshum/IPS (Kode BUKU-SMA-IPS atau LINISWARA-TKA2025). Menguji kurva ekonomi, dasar SIG, dan mobilitas sosial.",
+        "Paket SMA/MA Kelas 10 jalur Soshum/IPS untuk pembeli buku cetak Liniswara. Menguji kurva ekonomi, dasar SIG, dan mobilitas sosial.",
       duration_minutes: 35,
       question_count: 10,
       is_premium: true,
@@ -822,7 +822,7 @@ export function buildSeedData(): {
       level: "SMA/MA",
       subject: "Kelas 11 • Peminatan MIPA (Kalkulus Turunan, Katalis & Mitosis)",
       description:
-        "Paket SMA/MA Kelas 11 jalur MIPA (Kode BUKU-SMA-MIPA atau LINISWARA-TKA2025). Soal optimasi fungsi kuadrat, laju reaksi kimia, dan biologi sel.",
+        "Paket SMA/MA Kelas 11 jalur MIPA untuk pembeli buku cetak Liniswara. Soal optimasi fungsi kuadrat, laju reaksi kimia, dan biologi sel.",
       duration_minutes: 35,
       question_count: 10,
       is_premium: true,
@@ -834,7 +834,7 @@ export function buildSeedData(): {
       level: "SMA/MA",
       subject: "Kelas 11 • Peminatan IPS & Bahasa (Bank Sentral, Demografi & Heuristik)",
       description:
-        "Paket SMA/MA Kelas 11 jalur IPS (Kode BUKU-SMA-IPS atau LINISWARA-TKA2025). Soal inflasi/moneter BI, bonus demografi, dan metode sejarah.",
+        "Paket SMA/MA Kelas 11 jalur IPS untuk pembeli buku cetak Liniswara. Soal inflasi/moneter BI, bonus demografi, dan metode sejarah.",
       duration_minutes: 35,
       question_count: 10,
       is_premium: true,
@@ -846,7 +846,7 @@ export function buildSeedData(): {
       level: "SMA/MA",
       subject: "Kelas 12 (TKA) • Peminatan MIPA (Genetika Mendel, Fisika & Eksponensial)",
       description:
-        "Simulasi akhir Kelas 12 jalur MIPA (Kode BUKU-SMA-MIPA atau LINISWARA-TKA2025) berbasis standar TKA & SNBT Saintek.",
+        "Simulasi akhir Kelas 12 jalur MIPA berbasis standar TKA & SNBT Saintek khusus pembeli buku cetak Liniswara.",
       duration_minutes: 35,
       question_count: 10,
       is_premium: true,
@@ -858,7 +858,7 @@ export function buildSeedData(): {
       level: "SMA/MA",
       subject: "Kelas 12 (TKA) • Peminatan IPS & Bahasa (Silogisme SNBT, SIG & Ekonomi)",
       description:
-        "Simulasi akhir Kelas 12 jalur IPS & Bahasa (Kode BUKU-SMA-IPS atau LINISWARA-TKA2025) menghadapi TKA & SNBT Soshum.",
+        "Simulasi akhir Kelas 12 jalur IPS & Bahasa menghadapi TKA & SNBT Soshum khusus pembeli buku cetak Liniswara.",
       duration_minutes: 35,
       question_count: 10,
       is_premium: true,
@@ -872,7 +872,7 @@ export function buildSeedData(): {
       level: "SMK/MAK",
       subject: "Kelas 10–12 • Jurusan Teknologi & IT (TJKT, RPL, Koding AI, Otomotif)",
       description:
-        "Paket kejuruan teknologi SMK/MAK (Kode BUKU-SMK-TEKNIK atau SMARTSTEPS-SMK). Subnetting IPv4, SQL Injection, EFI otomotif, dan Hukum Ohm LED.",
+        "Paket kejuruan teknologi SMK/MAK khusus pembeli buku cetak Liniswara. Subnetting IPv4, SQL Injection, EFI otomotif, dan Hukum Ohm LED.",
       duration_minutes: 35,
       question_count: 10,
       is_premium: true,
@@ -884,7 +884,7 @@ export function buildSeedData(): {
       level: "SMK/MAK",
       subject: "Kelas 10–12 • Jurusan Bisnis & Pariwisata (Akuntansi, Pemasaran, Perhotelan)",
       description:
-        "Paket kejuruan bisnis & pariwisata SMK/MAK (Kode BUKU-SMK-BISNIS atau SMARTSTEPS-SMK). BEP usaha, akuntansi, ROAS iklan, guest folio, dan HACCP.",
+        "Paket kejuruan bisnis & pariwisata SMK/MAK khusus pembeli buku cetak Liniswara. BEP usaha, akuntansi, ROAS iklan, guest folio, dan HACCP.",
       duration_minutes: 35,
       question_count: 10,
       is_premium: true,
@@ -898,7 +898,7 @@ export function buildSeedData(): {
       level: "SD/MI",
       subject: "Bank Soal Akbar Buku (Kelas 1–6) • 60 Soal Literasi, Numerasi & IPAS",
       description:
-        "Paket spesial pembeli buku cetak SD/MI (Kode LINISWARA-SD2026). Berisi 60 soal lengkap (180 pernyataan B/S) dari Kelas 1 hingga Kelas 6.",
+        "Paket spesial pembeli buku cetak SD/MI. Berisi 60 soal lengkap (180 pernyataan B/S) dari Kelas 1 hingga Kelas 6.",
       duration_minutes: 90,
       question_count: 60,
       is_premium: true,
@@ -910,7 +910,7 @@ export function buildSeedData(): {
       level: "SMP/MTs",
       subject: "Bank Soal Akbar Buku (Kelas 7–9) • 60 Soal Matematika, IPA, IPS & AI",
       description:
-        "Paket spesial pembeli buku cetak SMP/MTs (Kode LINISWARA-SMP2026). Berisi 60 soal TKA lengkap (180 pernyataan B/S) Kelas 7, 8, dan 9.",
+        "Paket spesial pembeli buku cetak SMP/MTs. Berisi 60 soal TKA lengkap (180 pernyataan B/S) Kelas 7, 8, dan 9.",
       duration_minutes: 90,
       question_count: 60,
       is_premium: true,
@@ -922,7 +922,7 @@ export function buildSeedData(): {
       level: "SMA/MA",
       subject: "Bank Soal Akbar Buku (Kelas 10–12) • 80 Soal Peminatan MIPA, IPS & TPS",
       description:
-        "Bank soal akbar khusus pembeli buku SMART STEPS SMA/MA (Kode LINISWARA-TKA2025). Berisi 80 soal intensif (240 pernyataan B/S) siap ujian.",
+        "Bank soal akbar khusus pembeli buku SMART STEPS SMA/MA. Berisi 80 soal intensif (240 pernyataan B/S) siap ujian.",
       duration_minutes: 120,
       question_count: 80,
       is_premium: true,
@@ -934,7 +934,7 @@ export function buildSeedData(): {
       level: "SMK/MAK",
       subject: "Bank Soal Akbar Buku (Kelas 10–12) • 100 Soal Teknologi, Bisnis & KIK",
       description:
-        "Bank soal akbar terlengkap 100 soal (300 pernyataan B/S) untuk pembeli buku cetak SMK/MAK (Kode SMARTSTEPS-SMK) mencakup semua kompetensi kejuruan.",
+        "Bank soal akbar terlengkap 100 soal (300 pernyataan B/S) untuk pembeli buku cetak SMK/MAK mencakup semua kompetensi kejuruan.",
       duration_minutes: 120,
       question_count: 100,
       is_premium: true,

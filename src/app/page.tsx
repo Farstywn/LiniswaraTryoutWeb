@@ -460,25 +460,29 @@ export default async function LandingPage() {
                 <div>
                   <h3 className="flex items-center gap-2 text-base font-bold text-slate-900">
                     <CheckCircle2 className="h-5 w-5 text-[#0053FF]" />
-                    Kode Redeem Resmi untuk Uji Coba Semua Jenjang
+                    Aktivasi Kode Voucher Buku Cetak Resmi Liniswara
                   </h3>
-                  <p className="mt-1 text-xs text-slate-600">
-                    Gunakan salah satu kode berikut di menu{" "}
-                    <strong>Aktivasi Kode Redeem</strong> setelah login:
+                  <p className="mt-1 text-xs leading-relaxed text-slate-600">
+                    Sudah memiliki buku cetak terbitan{" "}
+                    <strong>PT Lini Suara Nusantara</strong>? Tukarkan kode unik
+                    pada halaman pengantar buku di menu{" "}
+                    <strong>Aktivasi Kode Redeem</strong> setelah login untuk
+                    membuka video pembahasan dan Bank Soal Akbar sesuai jenjang
+                    Anda.
                   </p>
                   <div className="mt-4 flex flex-wrap gap-2">
                     {[
-                      "LINISWARA-SD2026",
-                      "LINISWARA-SMP2026",
-                      "LINISWARA-TKA2025",
-                      "SMARTSTEPS-SMK",
-                      "MGMP-JATENG25",
-                    ].map((code) => (
+                      "SD/MI Kelas 1–6",
+                      "SMP/MTs Kelas 7–9",
+                      "SMA/MA MIPA & IPS",
+                      "SMK/MAK Semua Jurusan",
+                      "Program Kolaborasi MGMP",
+                    ].map((scope) => (
                       <span
-                        key={code}
-                        className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 font-mono text-xs font-bold text-[#0053FF] transition hover:bg-[#0053FF] hover:text-white"
+                        key={scope}
+                        className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-[#0053FF]"
                       >
-                        {code}
+                        {scope}
                       </span>
                     ))}
                   </div>
@@ -489,7 +493,7 @@ export default async function LandingPage() {
                     href={user ? "/dashboard/redeem" : "/login"}
                     className="btn-liniswara"
                   >
-                    {user ? "Tukarkan Kode" : "Masuk & Coba Sekarang"}
+                    {user ? "Tukarkan Kode" : "Masuk & Aktivasi Kode"}
                   </Link>
                 </div>
               </div>

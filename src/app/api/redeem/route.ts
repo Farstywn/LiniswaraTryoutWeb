@@ -5,7 +5,6 @@ import {
   extractTargetLevels,
   findUserById,
   getUserActiveRedemptions,
-  listRedeemCodes,
   listUserRedemptions,
   parseCustomBundleTargets,
   redeemCodeForUser,
@@ -20,10 +19,9 @@ export async function GET() {
     return NextResponse.json({ error: "Silakan login terlebih dahulu." }, { status: 401 });
   }
 
-  const [user, history, codes] = await Promise.all([
+  const [user, history] = await Promise.all([
     findUserById(session.userId),
     listUserRedemptions(session.userId),
-    listRedeemCodes(),
   ]);
 
   const accessInfo = user
@@ -43,25 +41,8 @@ export async function GET() {
     };
   });
 
-  const sampleCodes = codes
-    .filter((c) => c.is_active && c.used_count < c.quota)
-    .map((c) => {
-      const isCustom = parseCustomBundleTargets(c.description).isCustomBundle;
-      return {
-        code: c.code,
-        plan_name: c.plan_name,
-        duration_days: c.duration_days,
-        description: stripCustomBundleTag(c.description),
-        target_levels: isCustom
-          ? []
-          : extractTargetLevels(c.code, c.plan_name),
-        scope_label: extractScopeLabel(c.code, c.plan_name, c.description),
-      };
-    });
-
   return NextResponse.json({
     history: enrichedHistory,
-    sampleCodes,
     unlockedLevels: accessInfo.unlockedLevels,
     scopeLabels: accessInfo.scopeLabels,
   });

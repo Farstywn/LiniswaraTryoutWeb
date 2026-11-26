@@ -51,6 +51,14 @@ export async function GET(
     pkg.id
   );
 
+  const sanitizedPkg = {
+    ...pkg,
+    description: pkg.description
+      .replace(/\s*\(Kode\s+[^)]+\)/gi, "")
+      .replace(/\s{2,}/g, " ")
+      .trim(),
+  };
+
   const attemptIdParam = request.nextUrl.searchParams.get("attemptId");
   if (attemptIdParam) {
     const attemptId = Number(attemptIdParam);
@@ -66,7 +74,7 @@ export async function GET(
       );
     }
     return NextResponse.json({
-      package: pkg,
+      package: sanitizedPkg,
       questions: [],
       savedResult,
     });
@@ -83,7 +91,7 @@ export async function GET(
 
   const questions = await listTryoutQuestions(packageId);
   return NextResponse.json({
-    package: pkg,
+    package: sanitizedPkg,
     questions: toPublicQuestions(questions),
   });
 }
