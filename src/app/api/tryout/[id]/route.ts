@@ -91,6 +91,7 @@ export async function GET(
 
   const questions = await listTryoutQuestions(packageId);
   return NextResponse.json({
+    userId: safeUser.id,
     package: sanitizedPkg,
     questions: toPublicQuestions(questions),
   });

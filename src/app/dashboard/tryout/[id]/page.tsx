@@ -30,12 +30,29 @@ interface ReviewItem {
   correctCount: number;
 }
 
+interface SavedTryoutSession {
+  userId: number;
+  packageId: string;
+  startedAt: number;
+  endsAt: number;
+  totalSeconds: number;
+  currentIndex: number;
+  answers: Record<number, [StatementAnswer, StatementAnswer, StatementAnswer]>;
+  flagged: Record<number, boolean>;
+  updatedAt: number;
+}
+
+function getTryoutStorageKey(userId: number, packageId: string): string {
+  return `liniswara_tryout_progress_u${userId}_p${packageId}`;
+}
+
 function TryoutRunnerContent() {
   const params = useParams();
   const searchParams = useSearchParams();
   const packageId = String(params.id || "1");
   const attemptId = searchParams.get("attemptId");
 
+  const [userId, setUserId] = useState<number | null>(null);
   const [pkg, setPkg] = useState<TryoutPackage | null>(null);
   const [questions, setQuestions] = useState<PublicTryoutQuestion[]>([]);
   const [answers, setAnswers] = useState<
@@ -45,11 +62,14 @@ function TryoutRunnerContent() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [secondsLeft, setSecondsLeft] = useState(1800);
   const [totalSeconds, setTotalSeconds] = useState(1800);
+  const [endsAt, setEndsAt] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   const [examStarted, setExamStarted] = useState(false);
+  const [resumedNotice, setResumedNotice] = useState(false);
+  const [pendingAutoSubmit, setPendingAutoSubmit] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
 
   const [result, setResult] = useState<{
@@ -57,10 +77,24 @@ function TryoutRunnerContent() {
     review: ReviewItem[];
   } | null>(null);
 
+  const clearSavedSession = useCallback(
+    (uid: number | null) => {
+      if (!uid) return;
+      try {
+        window.localStorage.removeItem(getTryoutStorageKey(uid, packageId));
+      } catch {
+        // Abaikan jika storage tidak tersedia
+      }
+    },
+    [packageId]
+  );
+
   useEffect(() => {
     async function load() {
       setLoading(true);
       setError("");
+      setResumedNotice(false);
+      setPendingAutoSubmit(false);
       try {
         const url = attemptId
           ? `/api/tryout/${packageId}?attemptId=${attemptId}`
@@ -73,6 +107,9 @@ function TryoutRunnerContent() {
           return;
         }
         setPkg(data.package);
+        const uid: number | null =
+          typeof data.userId === "number" ? data.userId : null;
+        setUserId(uid);
 
         if (data.savedResult) {
           setResult(data.savedResult);
@@ -95,11 +132,99 @@ function TryoutRunnerContent() {
         for (const q of qs) {
           initialAns[q.id] = [null, null, null];
         }
-        setAnswers(initialAns);
 
         const dur = (data.package?.duration_minutes || 30) * 60;
-        setSecondsLeft(dur);
         setTotalSeconds(dur);
+
+        // Cek apakah ada sesi ujian yang tersimpan (mis. karena halaman reload / browser tertutup)
+        let restored = false;
+        if (uid && qs.length > 0) {
+          try {
+            const raw = window.localStorage.getItem(
+              getTryoutStorageKey(uid, packageId)
+            );
+            if (raw) {
+              const saved = JSON.parse(raw) as SavedTryoutSession;
+              if (
+                saved &&
+                saved.userId === uid &&
+                String(saved.packageId) === packageId &&
+                typeof saved.endsAt === "number"
+              ) {
+                const mergedAns: Record<
+                  number,
+                  [StatementAnswer, StatementAnswer, StatementAnswer]
+                > = { ...initialAns };
+                let hasAnyAnswer = false;
+                for (const q of qs) {
+                  const savedQ = saved.answers?.[q.id];
+                  if (Array.isArray(savedQ) && savedQ.length === 3) {
+                    const normalized: [
+                      StatementAnswer,
+                      StatementAnswer,
+                      StatementAnswer,
+                    ] = [
+                      typeof savedQ[0] === "boolean" ? savedQ[0] : null,
+                      typeof savedQ[1] === "boolean" ? savedQ[1] : null,
+                      typeof savedQ[2] === "boolean" ? savedQ[2] : null,
+                    ];
+                    mergedAns[q.id] = normalized;
+                    if (normalized.some((v) => v !== null)) {
+                      hasAnyAnswer = true;
+                    }
+                  }
+                }
+
+                const remaining = Math.max(
+                  0,
+                  Math.ceil((saved.endsAt - Date.now()) / 1000)
+                );
+
+                if (remaining > 0) {
+                  setAnswers(mergedAns);
+                  setFlagged(saved.flagged || {});
+                  setCurrentIndex(
+                    Math.min(
+                      Math.max(0, Number(saved.currentIndex) || 0),
+                      qs.length - 1
+                    )
+                  );
+                  setTotalSeconds(saved.totalSeconds || dur);
+                  setEndsAt(saved.endsAt);
+                  setSecondsLeft(remaining);
+                  setExamStarted(true);
+                  setResumedNotice(true);
+                  restored = true;
+                } else if (hasAnyAnswer) {
+                  // Waktu habis saat browser tertutup, namun jawaban sudah terisi: otomatis nilai agar progres tidak hilang
+                  setAnswers(mergedAns);
+                  setFlagged(saved.flagged || {});
+                  setTotalSeconds(saved.totalSeconds || dur);
+                  setEndsAt(saved.endsAt);
+                  setSecondsLeft(0);
+                  setExamStarted(true);
+                  setPendingAutoSubmit(true);
+                  restored = true;
+                } else {
+                  window.localStorage.removeItem(
+                    getTryoutStorageKey(uid, packageId)
+                  );
+                }
+              }
+            }
+          } catch {
+            // Abaikan bila data localStorage rusak
+          }
+        }
+
+        if (!restored) {
+          setAnswers(initialAns);
+          setFlagged({});
+          setCurrentIndex(0);
+          setSecondsLeft(dur);
+          setEndsAt(null);
+          setExamStarted(false);
+        }
       } catch {
         setError("Terjadi gangguan jaringan saat memuat soal.");
       } finally {
@@ -132,6 +257,9 @@ function TryoutRunnerContent() {
       if (!res.ok) {
         setError(data.error || "Gagal menyimpan jawaban tryout.");
       } else {
+        clearSavedSession(userId);
+        setEndsAt(null);
+        setResumedNotice(false);
         setResult(data);
       }
     } catch {
@@ -141,29 +269,139 @@ function TryoutRunnerContent() {
     }
   }, [
     answers,
+    clearSavedSession,
     packageId,
     questions,
     result,
     secondsLeft,
     submitting,
     totalSeconds,
+    userId,
   ]);
 
+  // Simpan otomatis setiap ada perubahan jawaban, nomor soal, atau tanda ragu-ragu
   useEffect(() => {
-    if (!examStarted || loading || error || result || questions.length === 0)
+    if (
+      !examStarted ||
+      !userId ||
+      !endsAt ||
+      result ||
+      loading ||
+      questions.length === 0
+    ) {
       return;
-    const timer = setInterval(() => {
-      setSecondsLeft((prev) => {
-        if (prev <= 1) {
-          clearInterval(timer);
-          handleSubmit();
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [examStarted, loading, error, result, questions.length, handleSubmit]);
+    }
+    try {
+      const payload: SavedTryoutSession = {
+        userId,
+        packageId,
+        startedAt: endsAt - totalSeconds * 1000,
+        endsAt,
+        totalSeconds,
+        currentIndex,
+        answers,
+        flagged,
+        updatedAt: Date.now(),
+      };
+      window.localStorage.setItem(
+        getTryoutStorageKey(userId, packageId),
+        JSON.stringify(payload)
+      );
+    } catch {
+      // Abaikan jika quota storage penuh
+    }
+  }, [
+    answers,
+    currentIndex,
+    endsAt,
+    examStarted,
+    flagged,
+    loading,
+    packageId,
+    questions.length,
+    result,
+    totalSeconds,
+    userId,
+  ]);
+
+  // Auto-submit bila sesi tersimpan ditemukan dalam kondisi waktu sudah habis
+  useEffect(() => {
+    if (pendingAutoSubmit && examStarted && !result && !submitting) {
+      setPendingAutoSubmit(false);
+      handleSubmit();
+    }
+  }, [pendingAutoSubmit, examStarted, result, submitting, handleSubmit]);
+
+  // Timer berbasis waktu nyata (endsAt) agar tetap akurat meski tab sempat ditutup/tidur
+  useEffect(() => {
+    if (
+      !examStarted ||
+      !endsAt ||
+      loading ||
+      error ||
+      result ||
+      questions.length === 0
+    ) {
+      return;
+    }
+
+    const syncTimer = () => {
+      const remaining = Math.max(0, Math.ceil((endsAt - Date.now()) / 1000));
+      setSecondsLeft(remaining);
+      if (remaining <= 0) {
+        handleSubmit();
+      }
+    };
+
+    syncTimer();
+    const timer = setInterval(syncTimer, 1000);
+    window.addEventListener("focus", syncTimer);
+    document.addEventListener("visibilitychange", syncTimer);
+
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener("focus", syncTimer);
+      document.removeEventListener("visibilitychange", syncTimer);
+    };
+  }, [
+    examStarted,
+    endsAt,
+    loading,
+    error,
+    result,
+    questions.length,
+    handleSubmit,
+  ]);
+
+  function startNewExam() {
+    const now = Date.now();
+    const deadline = now + totalSeconds * 1000;
+    setEndsAt(deadline);
+    setSecondsLeft(totalSeconds);
+    setExamStarted(true);
+    setResumedNotice(false);
+    if (userId) {
+      try {
+        const initialSession: SavedTryoutSession = {
+          userId,
+          packageId,
+          startedAt: now,
+          endsAt: deadline,
+          totalSeconds,
+          currentIndex: 0,
+          answers,
+          flagged,
+          updatedAt: now,
+        };
+        window.localStorage.setItem(
+          getTryoutStorageKey(userId, packageId),
+          JSON.stringify(initialSession)
+        );
+      } catch {
+        // Abaikan jika storage tidak tersedia
+      }
+    }
+  }
 
   function setStatementAnswer(
     questionId: number,
@@ -476,6 +714,12 @@ function TryoutRunnerContent() {
                   4. Jika waktu habis, jawaban yang sudah dipilih akan otomatis
                   dikumpulkan dan dinilai oleh sistem.
                 </li>
+                <li>
+                  5. Jawaban, nomor soal aktif, dan sisa waktu{" "}
+                  <strong>tersimpan otomatis</strong> sehingga tetap aman bila
+                  halaman termuat ulang (<em>refresh</em>) atau tab sempat
+                  tertutup.
+                </li>
               </ul>
             </div>
 
@@ -488,7 +732,7 @@ function TryoutRunnerContent() {
               </Link>
               <button
                 type="button"
-                onClick={() => setExamStarted(true)}
+                onClick={startNewExam}
                 className="btn-liniswara px-6 py-3 text-xs"
               >
                 <Play className="h-4 w-4" />
@@ -522,12 +766,37 @@ function TryoutRunnerContent() {
 
   return (
     <div className="space-y-6">
+      {resumedNotice && (
+        <div className="flex items-center justify-between gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs text-emerald-800">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
+            <span>
+              <strong>Progres tryout sebelumnya berhasil dipulihkan!</strong>{" "}
+              Jawaban, penanda ragu-ragu, dan sisa waktu Anda tetap terjaga.
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setResumedNotice(false)}
+            className="shrink-0 rounded-lg px-2 py-1 font-bold text-emerald-700 hover:bg-emerald-100"
+          >
+            Tutup
+          </button>
+        </div>
+      )}
+
       {/* HEADER TRYOUT */}
       <div className="flex flex-col justify-between gap-4 rounded-2xl border border-slate-200 bg-white p-5 sm:flex-row sm:items-center">
         <div>
-          <span className="text-[11px] font-bold uppercase tracking-wider text-[#0053FF]">
-            {pkg?.level} • {questions.length} Soal × 3 Pernyataan Benar/Salah
-          </span>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-[#0053FF]">
+              {pkg?.level} • {questions.length} Soal × 3 Pernyataan Benar/Salah
+            </span>
+            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+              Tersimpan otomatis
+            </span>
+          </div>
           <h1 className="text-base font-bold text-slate-900 sm:text-lg">
             {pkg?.title}
           </h1>

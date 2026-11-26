@@ -42,6 +42,7 @@ export async function GET() {
   ]);
 
   return NextResponse.json({
+    userId: safeUser.id,
     packages: packages.map((pkg) => ({
       ...pkg,
       description: sanitizePackageDescription(pkg.description),

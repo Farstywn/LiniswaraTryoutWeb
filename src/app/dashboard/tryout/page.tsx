@@ -29,6 +29,9 @@ export default function TryoutCatalogPage() {
   const [attempts, setAttempts] = useState<AttemptWithPackage[]>([]);
   const [unlockedLevels, setUnlockedLevels] = useState<string[]>([]);
   const [scopeLabels, setScopeLabels] = useState<string[]>([]);
+  const [activeSessions, setActiveSessions] = useState<
+    Record<number, { answeredCount: number; minutesLeft: number }>
+  >({});
   const [filterLevel, setFilterLevel] = useState("Semua");
   const [subFilter, setSubFilter] = useState("Semua");
   const [searchQuery, setSearchQuery] = useState("");
@@ -42,12 +45,47 @@ export default function TryoutCatalogPage() {
         if (res.ok) {
           const data = await res.json();
           const grade = String(data.userGrade || "");
-          setPackages(data.packages || []);
+          const loadedPackages: PackageItem[] = data.packages || [];
+          const uid: number | null =
+            typeof data.userId === "number" ? data.userId : null;
+          setPackages(loadedPackages);
           setAttempts(data.attempts || []);
           setUnlockedLevels(data.unlockedLevels || []);
           setScopeLabels(data.scopeLabels || []);
           if (["SD/MI", "SMP/MTs", "SMA/MA", "SMK/MAK"].includes(grade)) {
             setFilterLevel(grade);
+          }
+
+          if (uid) {
+            const inProgress: Record<
+              number,
+              { answeredCount: number; minutesLeft: number }
+            > = {};
+            for (const pkg of loadedPackages) {
+              try {
+                const raw = window.localStorage.getItem(
+                  `liniswara_tryout_progress_u${uid}_p${pkg.id}`
+                );
+                if (!raw) continue;
+                const saved = JSON.parse(raw) as {
+                  endsAt?: number;
+                  answers?: Record<number, (boolean | null)[]>;
+                };
+                if (typeof saved?.endsAt === "number" && saved.endsAt > Date.now()) {
+                  const answeredCount = Object.values(saved.answers || {}).filter(
+                    (arr) => Array.isArray(arr) && arr.some((v) => v !== null)
+                  ).length;
+                  const minutesLeft = Math.max(
+                    1,
+                    Math.ceil((saved.endsAt - Date.now()) / 60000)
+                  );
+                  inProgress[pkg.id] = { answeredCount, minutesLeft };
+                }
+              } catch {
+                // Abaikan jika format storage tidak valid
+              }
+            }
+            setActiveSessions(inProgress);
           }
         }
       } finally {
@@ -245,7 +283,7 @@ export default function TryoutCatalogPage() {
                   </div>
                 </div>
 
-                <div className="mt-6">
+                  <div className="mt-6">
                   {pkg.locked ? (
                     <Link
                       href="/dashboard/redeem"
@@ -254,6 +292,16 @@ export default function TryoutCatalogPage() {
                       <Lock className="h-4 w-4" />
                       Aktifkan Kode {pkg.level} untuk Membuka
                       <KeyRound className="h-4 w-4" />
+                    </Link>
+                  ) : activeSessions[pkg.id] ? (
+                    <Link
+                      href={`/dashboard/tryout/${pkg.id}`}
+                      className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-3 text-xs font-bold text-white shadow-sm transition hover:bg-emerald-700"
+                    >
+                      Lanjutkan Simulasi ({activeSessions[pkg.id].answeredCount}/
+                      {pkg.question_count} soal • Sisa ~
+                      {activeSessions[pkg.id].minutesLeft} mnt)
+                      <ArrowRight className="h-4 w-4" />
                     </Link>
                   ) : (
                     <Link
