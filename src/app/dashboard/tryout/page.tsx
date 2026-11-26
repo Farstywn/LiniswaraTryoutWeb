@@ -97,22 +97,43 @@ export default function TryoutCatalogPage() {
 
   const SUB_CHIPS: Record<string, { label: string; keyword: string }[]> = {
     "SD/MI": [
-      { label: "Kelas 1–3", keyword: "Kelas 1–3" },
-      { label: "Kelas 4–6", keyword: "Kelas 4–6" },
+      { label: "Kelas 1–3", keyword: "SD_1_3" },
+      { label: "Kelas 4–6", keyword: "SD_4_6" },
+      { label: "Bank Soal Akbar (60 Soal)", keyword: "Bank Soal Akbar" },
     ],
     "SMP/MTs": [
-      { label: "Kelas 7–8", keyword: "Kelas 7–8" },
-      { label: "Kelas 9 (TKA)", keyword: "Kelas 9" },
+      { label: "Kelas 7–8", keyword: "SMP_7_8" },
+      { label: "Kelas 9 (TKA)", keyword: "SMP_9" },
+      { label: "Bank Soal Akbar (60 Soal)", keyword: "Bank Soal Akbar" },
     ],
     "SMA/MA": [
       { label: "Peminatan MIPA", keyword: "MIPA" },
       { label: "Peminatan IPS & Bahasa", keyword: "IPS" },
+      { label: "Bank Soal Akbar (80 Soal)", keyword: "Bank Soal Akbar" },
     ],
     "SMK/MAK": [
       { label: "Teknologi & IT", keyword: "Teknologi" },
       { label: "Bisnis & Pariwisata", keyword: "Bisnis" },
+      { label: "Bank Soal Akbar (100 Soal)", keyword: "Bank Soal Akbar" },
     ],
   };
+
+  function matchesSubChip(pkg: PackageItem, chipKey: string): boolean {
+    const text = `${pkg.title} ${pkg.subject}`;
+    if (chipKey === "SD_1_3") {
+      return /Kelas\s+[123](?!–6)\b/i.test(text) || /Fase A\b/i.test(text);
+    }
+    if (chipKey === "SD_4_6") {
+      return /Kelas\s+[456]\b/i.test(text) || /Fase C\b/i.test(text);
+    }
+    if (chipKey === "SMP_7_8") {
+      return /Kelas\s+[78](?!–9)\b/i.test(text);
+    }
+    if (chipKey === "SMP_9") {
+      return /Kelas\s+9\b/i.test(text);
+    }
+    return text.toLowerCase().includes(chipKey.toLowerCase());
+  }
 
   const levelFiltered =
     filterLevel === "Semua"
@@ -126,7 +147,7 @@ export default function TryoutCatalogPage() {
       subFilter !== "Semua" &&
       subFilter !== "Gratis" &&
       subFilter !== "Lanjutan" &&
-      !`${p.title} ${p.subject}`.includes(subFilter)
+      !matchesSubChip(p, subFilter)
     ) {
       return false;
     }

@@ -7,15 +7,30 @@ import { AlertCircle, ArrowLeft, UserPlus } from "lucide-react";
 import SearchableSelect from "@/components/SearchableSelect";
 
 const SUB_CLASS_OPTIONS: Record<string, string[]> = {
-  "SD/MI": ["Kelas 1–3 (Fase A–B)", "Kelas 4–6 (Fase C)"],
+  "SD/MI": [
+    "Kelas 1 (Fase A)",
+    "Kelas 2 (Fase A)",
+    "Kelas 3 (Fase B)",
+    "Kelas 4 (Fase B)",
+    "Kelas 5 (Fase C)",
+    "Kelas 6 (Fase C)",
+  ],
   "SMP/MTs": ["Kelas 7", "Kelas 8", "Kelas 9 (Persiapan TKA)"],
   "SMA/MA": [
-    "Kelas 10–12 • Peminatan MIPA",
-    "Kelas 10–12 • Peminatan IPS & Bahasa",
+    "Kelas 10 • Peminatan MIPA",
+    "Kelas 10 • Peminatan IPS & Bahasa",
+    "Kelas 11 • Peminatan MIPA",
+    "Kelas 11 • Peminatan IPS & Bahasa",
+    "Kelas 12 (TKA) • Peminatan MIPA",
+    "Kelas 12 (TKA) • Peminatan IPS & Bahasa",
   ],
   "SMK/MAK": [
-    "Kelas 10–12 • Teknologi & IT (TJKT/RPL/Otomotif)",
-    "Kelas 10–12 • Bisnis & Pariwisata (Akuntansi/Pemasaran/Hotel)",
+    "Kelas 10 • Teknologi & IT (TJKT/RPL/Otomotif)",
+    "Kelas 10 • Bisnis & Pariwisata (Akuntansi/Pemasaran/Hotel)",
+    "Kelas 11 • Teknologi & IT (TJKT/RPL/Otomotif)",
+    "Kelas 11 • Bisnis & Pariwisata (Akuntansi/Pemasaran/Hotel)",
+    "Kelas 12 (TKA) • Teknologi & IT (TJKT/RPL/Otomotif)",
+    "Kelas 12 (TKA) • Bisnis & Pariwisata (Akuntansi/Pemasaran/Hotel)",
   ],
 };
 
@@ -25,7 +40,7 @@ export default function RegisterPage() {
   const [email, setEmail] = useState("");
   const [school, setSchool] = useState("");
   const [grade, setGrade] = useState("SD/MI");
-  const [subClass, setSubClass] = useState("Kelas 4–6 (Fase C)");
+  const [subClass, setSubClass] = useState("Kelas 6 (Fase C)");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");

@@ -40,6 +40,7 @@ export default function MateriPage() {
   >("Semua");
   const [searchQuery, setSearchQuery] = useState("");
   const [unlockedLevels, setUnlockedLevels] = useState<string[]>([]);
+  const [scopeLabels, setScopeLabels] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -53,6 +54,7 @@ export default function MateriPage() {
           const grade = String(data.userGrade || "");
           setMaterials(list);
           setUnlockedLevels(data.unlockedLevels || []);
+          setScopeLabels(data.scopeLabels || []);
 
           if (["SD/MI", "SMP/MTs", "SMA/MA", "SMK/MAK"].includes(grade)) {
             setFilterLevel(grade);
@@ -134,24 +136,27 @@ export default function MateriPage() {
         )}
       </div>
 
-      {unlockedLevels.length > 0 && unlockedLevels.length < 4 && (
-        <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-blue-200 bg-blue-50/70 px-4 py-2.5 text-xs text-slate-700">
-          <span>
-            Kode redeem aktif Anda membuka jenjang:{" "}
-            <strong className="text-[#0053FF]">
-              {unlockedLevels.join(", ")}
-            </strong>
-            . Materi lanjutan jenjang lain tetap terkunci sampai kode jenjang
-            tersebut diaktifkan.
-          </span>
-          <Link
-            href="/dashboard/redeem"
-            className="font-bold text-[#0053FF] hover:underline"
-          >
-            Tambah Kode →
-          </Link>
-        </div>
-      )}
+      {(scopeLabels.length > 0 || unlockedLevels.length > 0) &&
+        unlockedLevels.length < 4 && (
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-blue-200 bg-blue-50/70 px-4 py-2.5 text-xs text-slate-700">
+            <span>
+              Akses kode redeem aktif Anda:{" "}
+              <strong className="text-[#0053FF]">
+                {scopeLabels.length > 0
+                  ? scopeLabels.join(" + ")
+                  : unlockedLevels.join(", ")}
+              </strong>
+              . Materi lanjutan di luar cakupan paket tersebut tetap terkunci
+              sampai kode buku yang sesuai diaktifkan.
+            </span>
+            <Link
+              href="/dashboard/redeem"
+              className="font-bold text-[#0053FF] hover:underline"
+            >
+              Tambah Kode →
+            </Link>
+          </div>
+        )}
 
       {/* FILTER JENJANG & TIPE */}
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -227,12 +232,16 @@ export default function MateriPage() {
                       Video Lanjutan Khusus Kode Redeem {activeMaterial.grade_level}
                     </h2>
                     <p className="mt-2 max-w-md text-xs leading-relaxed text-blue-100">
-                      {unlockedLevels.length > 0
-                        ? `Akun Anda saat ini membuka jenjang ${unlockedLevels.join(
-                            ", "
-                          )}. Masukkan kode redeem jenjang ${
+                      {scopeLabels.length > 0 || unlockedLevels.length > 0
+                        ? `Akses aktif Anda saat ini mencakup ${
+                            scopeLabels.length > 0
+                              ? scopeLabels.join(" + ")
+                              : unlockedLevels.join(", ")
+                          }. Masukkan kode redeem buku ${
                             activeMaterial.grade_level
-                          } untuk membuka "${activeMaterial.title}".`
+                          } (${activeMaterial.category}) untuk membuka "${
+                            activeMaterial.title
+                          }".`
                         : `Tukarkan kode redeem dari buku cetak ${activeMaterial.grade_level} Liniswara untuk membuka materi "${activeMaterial.title}".`}
                     </p>
                     <Link
