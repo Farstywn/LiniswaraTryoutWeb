@@ -1,12 +1,21 @@
 const { createServer } = require("http");
 const { parse } = require("url");
+const path = require("path");
 const next = require("next");
+
+// Muat file .env secara otomatis saat berjalan lewat custom server (mis. cPanel Phusion Passenger)
+try {
+  const { loadEnvConfig } = require("@next/env");
+  loadEnvConfig(__dirname);
+} catch {
+  // Abaikan jika @next/env tidak tersedia; gunakan environment dari cPanel/sistem
+}
 
 const dev = process.env.NODE_ENV !== "production";
 const hostname = process.env.HOSTNAME || "0.0.0.0";
 const port = parseInt(process.env.PORT || "3000", 10);
 
-const app = next({ dev, hostname, port });
+const app = next({ dev, dir: path.resolve(__dirname), hostname, port });
 const handle = app.getRequestHandler();
 
 app.prepare().then(() => {
