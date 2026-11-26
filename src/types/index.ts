@@ -131,3 +131,16 @@ export interface TryoutAttempt {
   duration_seconds: number;
   created_at: string;
 }
+
+export interface TryoutSession {
+  id: number;
+  user_id: number;
+  package_id: number;
+  started_at_ms: number;
+  ends_at_ms: number;
+  total_seconds: number;
+  current_index: number;
+  answers: Record<number, [StatementAnswer, StatementAnswer, StatementAnswer]>;
+  flagged: Record<number, boolean>;
+  updated_at: string;
+}

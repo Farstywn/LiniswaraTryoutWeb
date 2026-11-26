@@ -56,12 +56,31 @@ export default function TryoutCatalogPage() {
             setFilterLevel(grade);
           }
 
+          const serverSessions: Record<
+            number,
+            { answeredCount: number; minutesLeft: number }
+          > = {};
+          const rawServerSessions = data.activeSessions as
+            | Record<
+                string,
+                { answeredCount?: number; minutesLeft?: number }
+              >
+            | undefined;
+          if (rawServerSessions && typeof rawServerSessions === "object") {
+            for (const [pkgIdStr, info] of Object.entries(rawServerSessions)) {
+              const idNum = Number(pkgIdStr);
+              if (idNum > 0 && info) {
+                serverSessions[idNum] = {
+                  answeredCount: Number(info.answeredCount || 0),
+                  minutesLeft: Math.max(1, Number(info.minutesLeft || 1)),
+                };
+              }
+            }
+          }
+
           if (uid) {
-            const inProgress: Record<
-              number,
-              { answeredCount: number; minutesLeft: number }
-            > = {};
             for (const pkg of loadedPackages) {
+              if (serverSessions[pkg.id]) continue;
               try {
                 const raw = window.localStorage.getItem(
                   `liniswara_tryout_progress_u${uid}_p${pkg.id}`
@@ -79,14 +98,14 @@ export default function TryoutCatalogPage() {
                     1,
                     Math.ceil((saved.endsAt - Date.now()) / 60000)
                   );
-                  inProgress[pkg.id] = { answeredCount, minutesLeft };
+                  serverSessions[pkg.id] = { answeredCount, minutesLeft };
                 }
               } catch {
                 // Abaikan jika format storage tidak valid
               }
             }
-            setActiveSessions(inProgress);
           }
+          setActiveSessions(serverSessions);
         }
       } finally {
         setLoading(false);

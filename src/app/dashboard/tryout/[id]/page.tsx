@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
-import { Suspense, useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import {
   AlertCircle,
   AlertTriangle,
@@ -63,6 +63,11 @@ function TryoutRunnerContent() {
   const [secondsLeft, setSecondsLeft] = useState(1800);
   const [totalSeconds, setTotalSeconds] = useState(1800);
   const [endsAt, setEndsAt] = useState<number | null>(null);
+  const [serverOffsetMs, setServerOffsetMs] = useState(0);
+  const [syncState, setSyncState] = useState<"saved" | "saving" | "offline">(
+    "saved"
+  );
+  const [startingExam, setStartingExam] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -76,6 +81,16 @@ function TryoutRunnerContent() {
     attempt: TryoutAttempt;
     review: ReviewItem[];
   } | null>(null);
+
+  const latestProgressRef = useRef({
+    currentIndex: 0,
+    answers: {} as Record<
+      number,
+      [StatementAnswer, StatementAnswer, StatementAnswer]
+    >,
+    flagged: {} as Record<number, boolean>,
+  });
+  latestProgressRef.current = { currentIndex, answers, flagged };
 
   const clearSavedSession = useCallback(
     (uid: number | null) => {
@@ -136,9 +151,101 @@ function TryoutRunnerContent() {
         const dur = (data.package?.duration_minutes || 30) * 60;
         setTotalSeconds(dur);
 
-        // Cek apakah ada sesi ujian yang tersimpan (mis. karena halaman reload / browser tertutup)
+        const srvNow =
+          typeof data.serverNow === "number" ? data.serverNow : Date.now();
+        setServerOffsetMs(srvNow - Date.now());
+
+        // Prioritaskan sesi resmi dari server MySQL (sinkron lintas perangkat & anti-ubah jam),
+        // dengan cadangan localStorage apabila sesi lokal masih aktif
         let restored = false;
-        if (uid && qs.length > 0) {
+        const serverSess = data.activeSession as {
+          started_at_ms?: number;
+          ends_at_ms?: number;
+          total_seconds?: number;
+          current_index?: number;
+          answers?: Record<number, (boolean | null)[]>;
+          flagged?: Record<number, boolean>;
+        } | null;
+
+        const applyRestoredSession = (
+          sessEndsAt: number,
+          sessTotalSeconds: number,
+          sessIndex: number,
+          sessAnswers: Record<number, (boolean | null)[]> | undefined,
+          sessFlagged: Record<number, boolean> | undefined,
+          refNow: number
+        ): boolean => {
+          const mergedAns: Record<
+            number,
+            [StatementAnswer, StatementAnswer, StatementAnswer]
+          > = { ...initialAns };
+          let hasAnyAnswer = false;
+          for (const q of qs) {
+            const savedQ = sessAnswers?.[q.id];
+            if (Array.isArray(savedQ) && savedQ.length === 3) {
+              const normalized: [
+                StatementAnswer,
+                StatementAnswer,
+                StatementAnswer,
+              ] = [
+                typeof savedQ[0] === "boolean" ? savedQ[0] : null,
+                typeof savedQ[1] === "boolean" ? savedQ[1] : null,
+                typeof savedQ[2] === "boolean" ? savedQ[2] : null,
+              ];
+              mergedAns[q.id] = normalized;
+              if (normalized.some((v) => v !== null)) {
+                hasAnyAnswer = true;
+              }
+            }
+          }
+
+          const remaining = Math.max(
+            0,
+            Math.ceil((sessEndsAt - refNow) / 1000)
+          );
+          if (remaining > 0) {
+            setAnswers(mergedAns);
+            setFlagged(sessFlagged || {});
+            setCurrentIndex(
+              Math.min(Math.max(0, Number(sessIndex) || 0), qs.length - 1)
+            );
+            setTotalSeconds(sessTotalSeconds || dur);
+            setEndsAt(sessEndsAt);
+            setSecondsLeft(remaining);
+            setExamStarted(true);
+            setResumedNotice(true);
+            return true;
+          }
+          if (hasAnyAnswer) {
+            setAnswers(mergedAns);
+            setFlagged(sessFlagged || {});
+            setTotalSeconds(sessTotalSeconds || dur);
+            setEndsAt(sessEndsAt);
+            setSecondsLeft(0);
+            setExamStarted(true);
+            setPendingAutoSubmit(true);
+            return true;
+          }
+          return false;
+        };
+
+        if (
+          serverSess &&
+          typeof serverSess.ends_at_ms === "number" &&
+          qs.length > 0
+        ) {
+          restored = applyRestoredSession(
+            serverSess.ends_at_ms,
+            serverSess.total_seconds || dur,
+            serverSess.current_index || 0,
+            serverSess.answers,
+            serverSess.flagged,
+            srvNow
+          );
+          if (!restored && uid) {
+            clearSavedSession(uid);
+          }
+        } else if (uid && qs.length > 0) {
           try {
             const raw = window.localStorage.getItem(
               getTryoutStorageKey(uid, packageId)
@@ -151,61 +258,15 @@ function TryoutRunnerContent() {
                 String(saved.packageId) === packageId &&
                 typeof saved.endsAt === "number"
               ) {
-                const mergedAns: Record<
-                  number,
-                  [StatementAnswer, StatementAnswer, StatementAnswer]
-                > = { ...initialAns };
-                let hasAnyAnswer = false;
-                for (const q of qs) {
-                  const savedQ = saved.answers?.[q.id];
-                  if (Array.isArray(savedQ) && savedQ.length === 3) {
-                    const normalized: [
-                      StatementAnswer,
-                      StatementAnswer,
-                      StatementAnswer,
-                    ] = [
-                      typeof savedQ[0] === "boolean" ? savedQ[0] : null,
-                      typeof savedQ[1] === "boolean" ? savedQ[1] : null,
-                      typeof savedQ[2] === "boolean" ? savedQ[2] : null,
-                    ];
-                    mergedAns[q.id] = normalized;
-                    if (normalized.some((v) => v !== null)) {
-                      hasAnyAnswer = true;
-                    }
-                  }
-                }
-
-                const remaining = Math.max(
-                  0,
-                  Math.ceil((saved.endsAt - Date.now()) / 1000)
+                restored = applyRestoredSession(
+                  saved.endsAt,
+                  saved.totalSeconds || dur,
+                  saved.currentIndex || 0,
+                  saved.answers,
+                  saved.flagged,
+                  srvNow
                 );
-
-                if (remaining > 0) {
-                  setAnswers(mergedAns);
-                  setFlagged(saved.flagged || {});
-                  setCurrentIndex(
-                    Math.min(
-                      Math.max(0, Number(saved.currentIndex) || 0),
-                      qs.length - 1
-                    )
-                  );
-                  setTotalSeconds(saved.totalSeconds || dur);
-                  setEndsAt(saved.endsAt);
-                  setSecondsLeft(remaining);
-                  setExamStarted(true);
-                  setResumedNotice(true);
-                  restored = true;
-                } else if (hasAnyAnswer) {
-                  // Waktu habis saat browser tertutup, namun jawaban sudah terisi: otomatis nilai agar progres tidak hilang
-                  setAnswers(mergedAns);
-                  setFlagged(saved.flagged || {});
-                  setTotalSeconds(saved.totalSeconds || dur);
-                  setEndsAt(saved.endsAt);
-                  setSecondsLeft(0);
-                  setExamStarted(true);
-                  setPendingAutoSubmit(true);
-                  restored = true;
-                } else {
+                if (!restored) {
                   window.localStorage.removeItem(
                     getTryoutStorageKey(uid, packageId)
                   );
@@ -232,7 +293,7 @@ function TryoutRunnerContent() {
       }
     }
     load();
-  }, [packageId, attemptId]);
+  }, [packageId, attemptId, clearSavedSession]);
 
   const handleSubmit = useCallback(async () => {
     if (submitting || result || questions.length === 0) return;
@@ -279,7 +340,7 @@ function TryoutRunnerContent() {
     userId,
   ]);
 
-  // Simpan otomatis setiap ada perubahan jawaban, nomor soal, atau tanda ragu-ragu
+  // Simpan otomatis ke localStorage (instan) + sinkronisasi ke server MySQL (debounced 600ms)
   useEffect(() => {
     if (
       !examStarted ||
@@ -301,7 +362,7 @@ function TryoutRunnerContent() {
         currentIndex,
         answers,
         flagged,
-        updatedAt: Date.now(),
+        updatedAt: Date.now() + serverOffsetMs,
       };
       window.localStorage.setItem(
         getTryoutStorageKey(userId, packageId),
@@ -310,6 +371,27 @@ function TryoutRunnerContent() {
     } catch {
       // Abaikan jika quota storage penuh
     }
+
+    setSyncState("saving");
+    const saveTimer = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/tryout/${packageId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "save",
+            currentIndex,
+            answers,
+            flagged,
+          }),
+        });
+        setSyncState(res.ok ? "saved" : "offline");
+      } catch {
+        setSyncState("offline");
+      }
+    }, 600);
+
+    return () => clearTimeout(saveTimer);
   }, [
     answers,
     currentIndex,
@@ -320,9 +402,42 @@ function TryoutRunnerContent() {
     packageId,
     questions.length,
     result,
+    serverOffsetMs,
     totalSeconds,
     userId,
   ]);
+
+  // Flush progres terakhir ke server saat tab ditutup atau berpindah aplikasi
+  useEffect(() => {
+    if (!examStarted || !endsAt || result) return;
+    const flushProgress = () => {
+      const latest = latestProgressRef.current;
+      try {
+        fetch(`/api/tryout/${packageId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          keepalive: true,
+          body: JSON.stringify({
+            action: "save",
+            currentIndex: latest.currentIndex,
+            answers: latest.answers,
+            flagged: latest.flagged,
+          }),
+        }).catch(() => {});
+      } catch {
+        // Abaikan saat unload
+      }
+    };
+    const onVisibility = () => {
+      if (document.visibilityState === "hidden") flushProgress();
+    };
+    window.addEventListener("pagehide", flushProgress);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      window.removeEventListener("pagehide", flushProgress);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [examStarted, endsAt, result, packageId]);
 
   // Auto-submit bila sesi tersimpan ditemukan dalam kondisi waktu sudah habis
   useEffect(() => {
@@ -332,7 +447,7 @@ function TryoutRunnerContent() {
     }
   }, [pendingAutoSubmit, examStarted, result, submitting, handleSubmit]);
 
-  // Timer berbasis waktu nyata (endsAt) agar tetap akurat meski tab sempat ditutup/tidur
+  // Timer berbasis jam server (endsAt - (Date.now() + serverOffsetMs)) agar anti-ubah jam perangkat
   useEffect(() => {
     if (
       !examStarted ||
@@ -346,7 +461,8 @@ function TryoutRunnerContent() {
     }
 
     const syncTimer = () => {
-      const remaining = Math.max(0, Math.ceil((endsAt - Date.now()) / 1000));
+      const nowServer = Date.now() + serverOffsetMs;
+      const remaining = Math.max(0, Math.ceil((endsAt - nowServer) / 1000));
       setSecondsLeft(remaining);
       if (remaining <= 0) {
         handleSubmit();
@@ -370,36 +486,64 @@ function TryoutRunnerContent() {
     error,
     result,
     questions.length,
+    serverOffsetMs,
     handleSubmit,
   ]);
 
-  function startNewExam() {
-    const now = Date.now();
-    const deadline = now + totalSeconds * 1000;
-    setEndsAt(deadline);
-    setSecondsLeft(totalSeconds);
-    setExamStarted(true);
-    setResumedNotice(false);
-    if (userId) {
-      try {
-        const initialSession: SavedTryoutSession = {
-          userId,
-          packageId,
-          startedAt: now,
-          endsAt: deadline,
-          totalSeconds,
-          currentIndex: 0,
-          answers,
-          flagged,
-          updatedAt: now,
-        };
-        window.localStorage.setItem(
-          getTryoutStorageKey(userId, packageId),
-          JSON.stringify(initialSession)
-        );
-      } catch {
-        // Abaikan jika storage tidak tersedia
+  async function startNewExam() {
+    if (startingExam) return;
+    setStartingExam(true);
+    try {
+      let deadline = Date.now() + serverOffsetMs + totalSeconds * 1000;
+      let refNow = Date.now() + serverOffsetMs;
+
+      const res = await fetch(`/api/tryout/${packageId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "start" }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (typeof data.serverNow === "number") {
+          setServerOffsetMs(data.serverNow - Date.now());
+          refNow = data.serverNow;
+        }
+        if (typeof data.session?.ends_at_ms === "number") {
+          deadline = data.session.ends_at_ms;
+        }
+        setSyncState("saved");
+      } else {
+        setSyncState("offline");
       }
+
+      const remaining = Math.max(1, Math.ceil((deadline - refNow) / 1000));
+      setEndsAt(deadline);
+      setSecondsLeft(remaining);
+      setExamStarted(true);
+      setResumedNotice(false);
+      if (userId) {
+        try {
+          const initialSession: SavedTryoutSession = {
+            userId,
+            packageId,
+            startedAt: deadline - totalSeconds * 1000,
+            endsAt: deadline,
+            totalSeconds,
+            currentIndex: 0,
+            answers,
+            flagged,
+            updatedAt: refNow,
+          };
+          window.localStorage.setItem(
+            getTryoutStorageKey(userId, packageId),
+            JSON.stringify(initialSession)
+          );
+        } catch {
+          // Abaikan jika storage tidak tersedia
+        }
+      }
+    } finally {
+      setStartingExam(false);
     }
   }
 
@@ -732,11 +876,14 @@ function TryoutRunnerContent() {
               </Link>
               <button
                 type="button"
+                disabled={startingExam}
                 onClick={startNewExam}
-                className="btn-liniswara px-6 py-3 text-xs"
+                className="btn-liniswara px-6 py-3 text-xs disabled:opacity-60"
               >
                 <Play className="h-4 w-4" />
-                Mulai Kerjakan Tryout Sekarang
+                {startingExam
+                  ? "Menyiapkan Sesi Ujian..."
+                  : "Mulai Kerjakan Tryout Sekarang"}
               </button>
             </div>
           </div>
@@ -792,9 +939,29 @@ function TryoutRunnerContent() {
             <span className="text-[11px] font-bold uppercase tracking-wider text-[#0053FF]">
               {pkg?.level} • {questions.length} Soal × 3 Pernyataan Benar/Salah
             </span>
-            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-              Tersimpan otomatis
+            <span
+              className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                syncState === "saved"
+                  ? "bg-emerald-50 text-emerald-700"
+                  : syncState === "saving"
+                  ? "bg-blue-50 text-[#0053FF]"
+                  : "bg-amber-50 text-amber-700"
+              }`}
+            >
+              <span
+                className={`h-1.5 w-1.5 rounded-full ${
+                  syncState === "saved"
+                    ? "bg-emerald-500"
+                    : syncState === "saving"
+                    ? "bg-[#0053FF]"
+                    : "bg-amber-500"
+                }`}
+              />
+              {syncState === "saved"
+                ? "Tersimpan di server"
+                : syncState === "saving"
+                ? "Menyimpan..."
+                : "Cadangan lokal aktif"}
             </span>
           </div>
           <h1 className="text-base font-bold text-slate-900 sm:text-lg">

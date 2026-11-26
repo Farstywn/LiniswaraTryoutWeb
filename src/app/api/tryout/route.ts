@@ -6,6 +6,7 @@ import {
   getUserActiveRedemptions,
   listTryoutPackages,
   listUserAttempts,
+  listUserTryoutSessions,
 } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
@@ -35,14 +36,39 @@ export async function GET() {
   }
 
   const safeUser = toSafeUser(user);
-  const [accessInfo, packages, attempts] = await Promise.all([
+  const [accessInfo, packages, attempts, sessions] = await Promise.all([
     getUserActiveRedemptions(safeUser),
     listTryoutPackages(),
     listUserAttempts(session.userId),
+    listUserTryoutSessions(session.userId),
   ]);
+
+  const serverNow = Date.now();
+  const activeSessions: Record<
+    number,
+    { endsAtMs: number; answeredCount: number; minutesLeft: number }
+  > = {};
+  for (const s of sessions) {
+    if (s.ends_at_ms > serverNow) {
+      const answeredCount = Object.values(s.answers || {}).filter(
+        (arr) => Array.isArray(arr) && arr.some((v) => v !== null)
+      ).length;
+      const minutesLeft = Math.max(
+        1,
+        Math.ceil((s.ends_at_ms - serverNow) / 60000)
+      );
+      activeSessions[s.package_id] = {
+        endsAtMs: s.ends_at_ms,
+        answeredCount,
+        minutesLeft,
+      };
+    }
+  }
 
   return NextResponse.json({
     userId: safeUser.id,
+    serverNow,
+    activeSessions,
     packages: packages.map((pkg) => ({
       ...pkg,
       description: sanitizePackageDescription(pkg.description),

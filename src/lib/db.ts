@@ -13,9 +13,11 @@ import type {
   QuestionUserAnswer,
   RedeemCode,
   SafeUser,
+  StatementAnswer,
   TryoutAttempt,
   TryoutPackage,
   TryoutQuestion,
+  TryoutSession,
   User,
   UserMaterialProgress,
   UserRedemption,
@@ -31,6 +33,7 @@ interface LocalStore {
   packages: TryoutPackage[];
   questions: TryoutQuestion[];
   attempts: TryoutAttempt[];
+  tryoutSessions?: TryoutSession[];
 }
 
 const LOCAL_DATA_PATH = path.join(process.cwd(), "database", "local-data.json");
@@ -227,6 +230,21 @@ async function ensureMysqlSchemaAndSeed(pool: Pool): Promise<void> {
       answers_json LONGTEXT NOT NULL,
       duration_seconds INT NOT NULL DEFAULT 0,
       created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+      FOREIGN KEY (package_id) REFERENCES tryout_packages(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+    `CREATE TABLE IF NOT EXISTS tryout_sessions (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      user_id INT NOT NULL,
+      package_id INT NOT NULL,
+      started_at_ms BIGINT NOT NULL,
+      ends_at_ms BIGINT NOT NULL,
+      total_seconds INT NOT NULL DEFAULT 1800,
+      current_index INT NOT NULL DEFAULT 0,
+      answers_json LONGTEXT NOT NULL,
+      flagged_json LONGTEXT NOT NULL,
+      updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      UNIQUE KEY uniq_user_package_session (user_id, package_id),
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
       FOREIGN KEY (package_id) REFERENCES tryout_packages(id) ON DELETE CASCADE
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
@@ -1706,6 +1724,183 @@ export async function saveTryoutAttempt(input: {
   writeLocalStore(store);
 
   return { attempt, review };
+}
+
+function mapMysqlTryoutSession(r: RowDataPacket): TryoutSession {
+  let answers: Record<
+    number,
+    [StatementAnswer, StatementAnswer, StatementAnswer]
+  > = {};
+  let flagged: Record<number, boolean> = {};
+  try {
+    answers = JSON.parse(String(r.answers_json || "{}"));
+  } catch {
+    answers = {};
+  }
+  try {
+    flagged = JSON.parse(String(r.flagged_json || "{}"));
+  } catch {
+    flagged = {};
+  }
+  return {
+    id: Number(r.id),
+    user_id: Number(r.user_id),
+    package_id: Number(r.package_id),
+    started_at_ms: Number(r.started_at_ms),
+    ends_at_ms: Number(r.ends_at_ms),
+    total_seconds: Number(r.total_seconds),
+    current_index: Number(r.current_index || 0),
+    answers,
+    flagged,
+    updated_at: r.updated_at
+      ? new Date(r.updated_at).toISOString()
+      : new Date().toISOString(),
+  };
+}
+
+export async function getTryoutSession(
+  userId: number,
+  packageId: number
+): Promise<TryoutSession | null> {
+  const pool = await tryInitMysql();
+  if (pool) {
+    const [rows] = await pool.query<RowDataPacket[]>(
+      "SELECT * FROM tryout_sessions WHERE user_id = ? AND package_id = ? LIMIT 1",
+      [userId, packageId]
+    );
+    return rows[0] ? mapMysqlTryoutSession(rows[0]) : null;
+  }
+  const store = readLocalStore();
+  const list = store.tryoutSessions || [];
+  return (
+    list.find((s) => s.user_id === userId && s.package_id === packageId) || null
+  );
+}
+
+export async function listUserTryoutSessions(
+  userId: number
+): Promise<TryoutSession[]> {
+  const pool = await tryInitMysql();
+  if (pool) {
+    const [rows] = await pool.query<RowDataPacket[]>(
+      "SELECT * FROM tryout_sessions WHERE user_id = ?",
+      [userId]
+    );
+    return rows.map(mapMysqlTryoutSession);
+  }
+  const store = readLocalStore();
+  return (store.tryoutSessions || []).filter((s) => s.user_id === userId);
+}
+
+export async function startOrResumeTryoutSession(
+  userId: number,
+  packageId: number,
+  durationMinutes: number
+): Promise<TryoutSession> {
+  const now = Date.now();
+  const totalSeconds = Math.max(60, durationMinutes * 60);
+  const existing = await getTryoutSession(userId, packageId);
+  if (existing && existing.ends_at_ms > now) {
+    return existing;
+  }
+
+  const endsAtMs = now + totalSeconds * 1000;
+  const pool = await tryInitMysql();
+  if (pool) {
+    await pool.query(
+      `INSERT INTO tryout_sessions (user_id, package_id, started_at_ms, ends_at_ms, total_seconds, current_index, answers_json, flagged_json)
+       VALUES (?, ?, ?, ?, ?, 0, '{}', '{}')
+       ON DUPLICATE KEY UPDATE started_at_ms = VALUES(started_at_ms), ends_at_ms = VALUES(ends_at_ms), total_seconds = VALUES(total_seconds), current_index = 0, answers_json = '{}', flagged_json = '{}'`,
+      [userId, packageId, now, endsAtMs, totalSeconds]
+    );
+    const created = await getTryoutSession(userId, packageId);
+    if (created) return created;
+  }
+
+  const store = readLocalStore();
+  if (!store.tryoutSessions) store.tryoutSessions = [];
+  store.tryoutSessions = store.tryoutSessions.filter(
+    (s) => !(s.user_id === userId && s.package_id === packageId)
+  );
+  const session: TryoutSession = {
+    id: store.tryoutSessions.reduce((m, s) => Math.max(m, s.id), 0) + 1,
+    user_id: userId,
+    package_id: packageId,
+    started_at_ms: now,
+    ends_at_ms: endsAtMs,
+    total_seconds: totalSeconds,
+    current_index: 0,
+    answers: {},
+    flagged: {},
+    updated_at: new Date(now).toISOString(),
+  };
+  store.tryoutSessions.push(session);
+  writeLocalStore(store);
+  return session;
+}
+
+export async function saveTryoutSessionProgress(
+  userId: number,
+  packageId: number,
+  input: {
+    currentIndex: number;
+    answers: Record<
+      number,
+      [StatementAnswer, StatementAnswer, StatementAnswer]
+    >;
+    flagged: Record<number, boolean>;
+  }
+): Promise<boolean> {
+  const existing = await getTryoutSession(userId, packageId);
+  if (!existing) return false;
+  // Izinkan grace period 60 detik pasca deadline untuk final flush sebelum auto-submit
+  if (Date.now() > existing.ends_at_ms + 60_000) return false;
+
+  const safeIndex = Math.max(0, Math.floor(Number(input.currentIndex) || 0));
+  const answersJson = JSON.stringify(input.answers || {});
+  const flaggedJson = JSON.stringify(input.flagged || {});
+
+  const pool = await tryInitMysql();
+  if (pool) {
+    await pool.query(
+      `UPDATE tryout_sessions SET current_index = ?, answers_json = ?, flagged_json = ? WHERE user_id = ? AND package_id = ?`,
+      [safeIndex, answersJson, flaggedJson, userId, packageId]
+    );
+    return true;
+  }
+
+  const store = readLocalStore();
+  const list = store.tryoutSessions || [];
+  const target = list.find(
+    (s) => s.user_id === userId && s.package_id === packageId
+  );
+  if (!target) return false;
+  target.current_index = safeIndex;
+  target.answers = input.answers || {};
+  target.flagged = input.flagged || {};
+  target.updated_at = new Date().toISOString();
+  writeLocalStore(store);
+  return true;
+}
+
+export async function deleteTryoutSession(
+  userId: number,
+  packageId: number
+): Promise<void> {
+  const pool = await tryInitMysql();
+  if (pool) {
+    await pool.query(
+      "DELETE FROM tryout_sessions WHERE user_id = ? AND package_id = ?",
+      [userId, packageId]
+    );
+    return;
+  }
+  const store = readLocalStore();
+  if (!store.tryoutSessions) return;
+  store.tryoutSessions = store.tryoutSessions.filter(
+    (s) => !(s.user_id === userId && s.package_id === packageId)
+  );
+  writeLocalStore(store);
 }
 
 export async function listUserAttempts(
