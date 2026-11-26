@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSessionFromCookies, toSafeUser } from "@/lib/auth";
+import {
+  checkRateLimit,
+  getClientIp,
+  getSessionFromCookies,
+  toSafeUser,
+} from "@/lib/auth";
 import {
   extractScopeLabel,
   extractTargetLevels,
@@ -54,6 +59,21 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       { error: "Silakan login terlebih dahulu untuk klaim kode redeem." },
       { status: 401 }
+    );
+  }
+
+  const ip = getClientIp(request);
+  const limit = checkRateLimit(
+    `redeem:${session.userId}:${ip}`,
+    15,
+    10 * 60 * 1000
+  );
+  if (!limit.allowed) {
+    return NextResponse.json(
+      {
+        error: `Terlalu banyak percobaan klaim kode. Silakan coba lagi dalam ${limit.retryAfterSeconds} detik.`,
+      },
+      { status: 429 }
     );
   }
 

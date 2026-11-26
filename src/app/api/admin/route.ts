@@ -10,6 +10,7 @@ import {
   deleteTryoutQuestion,
   deleteVideoMaterial,
   extractScopeLabel,
+  findUserById,
   formatCustomBundleDescription,
   getAdminStats,
   listAllAttemptsForAdmin,
@@ -30,9 +31,17 @@ import type { EducationLevel } from "@/types";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+async function verifyAdminSession() {
   const session = getSessionFromCookies();
-  if (!session || session.role !== "admin") {
+  if (!session || session.role !== "admin") return null;
+  const dbUser = await findUserById(session.userId);
+  if (!dbUser || dbUser.role !== "admin") return null;
+  return dbUser;
+}
+
+export async function GET() {
+  const adminUser = await verifyAdminSession();
+  if (!adminUser) {
     return NextResponse.json(
       { error: "Akses khusus Admin Liniswara." },
       { status: 403 }
@@ -79,8 +88,8 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
-  const session = getSessionFromCookies();
-  if (!session || session.role !== "admin") {
+  const adminUser = await verifyAdminSession();
+  if (!adminUser) {
     return NextResponse.json(
       { error: "Akses khusus Admin Liniswara." },
       { status: 403 }

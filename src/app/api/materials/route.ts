@@ -74,12 +74,51 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const materialId = Number(body.materialId);
-    if (!materialId) {
+    if (!Number.isInteger(materialId) || materialId <= 0) {
       return NextResponse.json(
         { error: "ID materi tidak valid." },
         { status: 400 }
       );
     }
+
+    const user = await findUserById(session.userId);
+    if (!user) {
+      return NextResponse.json(
+        { error: "Pengguna tidak ditemukan." },
+        { status: 401 }
+      );
+    }
+
+    const safeUser = toSafeUser(user);
+    const [accessInfo, materials] = await Promise.all([
+      getUserActiveRedemptions(safeUser),
+      listVideoMaterials(),
+    ]);
+    const targetMaterial = materials.find((m) => m.id === materialId);
+    if (!targetMaterial) {
+      return NextResponse.json(
+        { error: "Materi video tidak ditemukan." },
+        { status: 404 }
+      );
+    }
+
+    const unlocked =
+      !targetMaterial.is_premium ||
+      checkContentUnlockedWithState(
+        safeUser,
+        accessInfo.redemptions,
+        targetMaterial.grade_level,
+        `${targetMaterial.category} ${targetMaterial.subject} ${targetMaterial.title}`,
+        "material",
+        targetMaterial.id
+      );
+    if (!unlocked) {
+      return NextResponse.json(
+        { error: "Materi video masih terkunci. Aktifkan kode redeem terlebih dahulu." },
+        { status: 403 }
+      );
+    }
+
     const completed = await toggleMaterialCompleted(session.userId, materialId);
     return NextResponse.json({ completed });
   } catch (err) {

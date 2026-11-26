@@ -757,10 +757,16 @@ export async function redeemCodeForUser(
       baseDate + Number(codeRow.duration_days) * 24 * 60 * 60 * 1000
     ).toISOString();
 
-    await pool.query(
-      "UPDATE redeem_codes SET used_count = used_count + 1 WHERE id = ?",
+    const [updateRes] = await pool.query<ResultSetHeader>(
+      "UPDATE redeem_codes SET used_count = used_count + 1 WHERE id = ? AND is_active = 1 AND used_count < quota",
       [codeRow.id]
     );
+    if (updateRes.affectedRows === 0) {
+      return {
+        ok: false,
+        error: "Kuota kode redeem sudah habis atau kode telah dinonaktifkan.",
+      };
+    }
     await pool.query(
       `UPDATE users SET subscription_status = 'active', subscription_plan = ?, subscription_expires_at = ? WHERE id = ?`,
       [codeRow.plan_name, toMysqlDatetime(expiresAt), userId]
